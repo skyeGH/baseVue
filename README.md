@@ -1,6 +1,10 @@
 # libra
 > 图书管理系统，基于vue3
 > 仅用于学习和参考等非商业用途
+
+## 更新日志
+2022.7.4 引入element-ui plus全量包
+
 ## Project setup 初始化项目
 ```
 npm install
