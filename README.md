@@ -1,6 +1,5 @@
-# libra
-> 图书管理系统，基于vue3
-> 仅用于学习和参考等非商业用途
+# vue init
+> 方便开发的vue初始化，基于vue3
 
 ## 更新日志
 2022.7.4 引入element-ui plus全量包
