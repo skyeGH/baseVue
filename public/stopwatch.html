@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style type="text/css">
+        #status {
+            height: 50%;
+            font-size: 150px;
+            text-align: center;
+            color:#013878;
+        }
+        #input {
+            height: 50px;
+            box-sizing: border-box;
+            font-size: 40px;
+            margin: auto;
+            line-height: normal;
+            position: relative;
+            display: block;
+            padding: 0.8em;
+            border: none;
+            border-radius: 1px;
+            font-weight: bold;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            -webkit-appearance: none;
+            width: 25%;
+            background: #fff;
+            box-shadow: 0px 0px 0px 2px transparent;
+            color: #eca29b;
+            transition: box-shadow 0.3s;
+        }
+    </style>
+
+</head>
+<body  style="background-color: #f9f7f6">
+<div>
+    <!--<div style="width: 100%;height: 30px;">
+        <a href="./homepage.html">返回</a>
+    </div>-->
+
+    <div id="status" class="start">00:00:00:000</div>
+   <!-- <button class="start">开始</button>-->
+    <!--<button class="pause">暂停</button>-->
+    <span>
+        <input type="number" placeholder="点击此处开始" id="input" onclick="onStart()" onkeydown="enterKey()" class="inputer" type="text">
+    </span>
+    <div style="margin: auto;">
+        <button class="reset" onclick="onReset()">重置</button>
+    </div>
+</div>
+
+
+<script>
+    /**
+     * @description: 补0操作
+     * @param {*} num
+     * @param {*} targetLength
+     * @return {*}
+     */
+    function padZero (num, targetLength = 2) {
+        let str = num + ''
+        while (str.length < targetLength) {
+            str = '0' + str
+        }
+        return str
+    }
+
+    /**
+     * @description: 解析时间
+     * @param {*} time
+     * @return {*}
+     */
+    function parseTime (time) {
+        const SECOND = 1000
+        const MINUTE = 60 * SECOND
+        const HOUR = 60 * MINUTE
+        const DAY = 24 * HOUR
+
+        const days = Math.floor(time / DAY)
+        const hours = Math.floor((time % DAY) / HOUR)
+        const minutes = Math.floor((time % HOUR) / MINUTE)
+        const seconds = Math.floor((time % MINUTE) / SECOND)
+        const milliseconds = Math.floor(time % SECOND)
+
+        return {
+            total: time,
+            days,
+            hours,
+            minutes,
+            seconds,
+            milliseconds,
+        }
+    }
+
+
+    /**
+     * @description: 格式化时间
+     * @param {*} format
+     * @param {*} currentTime
+     * @return {*}
+     */
+    function parseFormat (format, currentTime) {
+        const { days } = currentTime
+        let { hours, minutes, seconds, milliseconds } = currentTime
+
+        if (format.includes('DD')) {
+            format = format.replace('DD', padZero(days))
+        } else {
+            hours += days * 24
+        }
+
+        if (format.includes('HH')) {
+            format = format.replace('HH', padZero(hours))
+        } else {
+            minutes += hours * 60
+        }
+
+        if (format.includes('mm')) {
+            format = format.replace('mm', padZero(minutes))
+        } else {
+            seconds += minutes * 60
+        }
+
+        if (format.includes('ss')) {
+            format = format.replace('ss', padZero(seconds))
+        } else {
+            milliseconds += seconds * 1000
+        }
+
+        if (format.includes('S')) {
+            const ms = padZero(milliseconds, 3)
+
+            if (format.includes('SSS')) {
+                format = format.replace('SSS', ms)
+            } else if (format.includes('SS')) {
+                format = format.replace('SS', ms.slice(0, 2))
+            } else {
+                format = format.replace('S', ms.charAt(0))
+            }
+        }
+
+        return format
+    }
+
+
+    /**
+     * @description: 渲染时间
+     * @param {*} time
+     * @return {*}
+     */
+    const render = (time) => {
+        time = parseFormat('HH:mm:ss:SSS', parseTime(time))
+        document.querySelector("#status").innerHTML = time
+    }
+
+
+    const useCountUp = (options) => {
+        let rafId, startTime, stopTime, curentTime, counting = false
+
+        const step = (timestamp) => {
+            curentTime = timestamp - startTime
+            render(curentTime)
+            options.onChange?.(curentTime);
+
+            if (options.time) {
+                if (Math.floor(curentTime) < options.time) {
+                    rafId = window.requestAnimationFrame(step)
+                } else {
+                    pause()
+                    options.onFinish?.()
+                }
+            } else {
+                rafId = window.requestAnimationFrame(step)
+            }
+
+        }
+
+        const start = () => {
+            // 计时中 或者 已经开始过计时想要重新开始计时，应该先点击一下 重置 再开始计时
+            if (counting || curentTime) {
+                return
+            }
+            counting = true
+            startTime = performance.now()
+            rafId = window.requestAnimationFrame(step)
+        }
+
+        const pause = () => {
+            // 已经暂停后，屏蔽掉点击
+            if (!counting) {
+                return
+            }
+            counting = false
+            stopTime = performance.now()
+            if (rafId) {
+                window.cancelAnimationFrame(rafId)
+            }
+        }
+
+        const goOn = () => {
+            // 已经在计时中，屏蔽掉点击
+            if (counting) {
+                return
+            }
+            counting = true
+            startTime += performance.now() - stopTime
+            rafId = window.requestAnimationFrame(step)
+        }
+
+        const reset = () => {
+            pause()
+            curentTime = 0
+            startTime = 0
+            stopTime = 0
+            render(0)
+        }
+
+        return {
+            start,
+            pause,
+            goOn,
+            reset
+        }
+    }
+
+    const { start, pause, goOn, reset } = useCountUp({
+        /*onChange: current => console.log('change', current),
+        onFinish: () => console.log('finish'),*/
+    });
+
+    document.querySelector('.start').addEventListener('click', () => {
+        start()
+    })
+
+    document.querySelector('.pause').addEventListener('click', () => {
+        pause()
+    })
+
+    document.querySelector('.goOn').addEventListener('click', () => {
+        goOn()
+    })
+
+    function onStart() {
+        start();
+        document.getElementById("input").setAttribute("placeholder", "按回车键停止");
+    }
+
+    function onReset() {
+        location.reload();
+    }
+
+    function enterKey(event) {
+        event = event || window.event;
+        if (event.keyCode == 13) {
+            pause();
+            document.getElementById('input').setAttribute('disabled', 'disabled')
+        }
+    }
+
+</script>
+</body>
+</html>
